@@ -171,8 +171,8 @@ button{font:inherit;cursor:pointer}
 <script id="snapshot" type="application/json"></script>
 <script>
 /* ===== Universo (mesmo do tickers.py) ===== */
-const UNIVERSE={ITUB4:"Bancos",BBDC4:"Bancos",BBAS3:"Bancos",SANB11:"Bancos",BPAC11:"Bancos",B3SA3:"Financeiro",BBSE3:"Seguros",CXSE3:"Seguros",PETR4:"Petróleo",PETR3:"Petróleo",PRIO3:"Petróleo",RECV3:"Petróleo",UGPA3:"Petróleo",VBBR3:"Petróleo",CSAN3:"Petróleo",VALE3:"Mineração",CMIN3:"Mineração",GGBR4:"Siderurgia",CSNA3:"Siderurgia",USIM5:"Siderurgia",GOAU4:"Siderurgia",AXIA3:"Energia",EQTL3:"Energia",CPFE3:"Energia",CMIG4:"Energia",EGIE3:"Energia",TAEE11:"Energia",ENGI11:"Energia",SBSP3:"Saneamento",ABEV3:"Consumo",NATU3:"Consumo",MGLU3:"Varejo",LREN3:"Varejo",ASAI3:"Varejo",RADL3:"Saúde",HAPV3:"Saúde",RDOR3:"Saúde",WEGE3:"Indústria",EMBR3:"Indústria",RAIL3:"Logística",AZUL4:"Logística",MOTV3:"Logística",SUZB3:"Papel e Celulose",KLBN11:"Papel e Celulose",JBSS3:"Alimentos",MBRF3:"Alimentos",SLCE3:"Agro",CYRE3:"Construção",MRVE3:"Construção",EZTC3:"Construção",TOTS3:"Tecnologia",VIVT3:"Telecom",TIMS3:"Telecom"};
-const BASE={ITUB4:36,BBDC4:15,BBAS3:24,SANB11:27,BPAC11:38,B3SA3:12,BBSE3:36,CXSE3:14,PETR4:32,PETR3:35,PRIO3:42,RECV3:15,UGPA3:17,VBBR3:22,CSAN3:8,VALE3:55,CMIN3:5,GGBR4:17,CSNA3:8,USIM5:6,GOAU4:9,AXIA3:44,EQTL3:33,CPFE3:39,CMIG4:11,EGIE3:40,TAEE11:35,ENGI11:44,SBSP3:110,ABEV3:13,NATU3:9,MGLU3:9,LREN3:16,ASAI3:7,RADL3:24,HAPV3:40,RDOR3:35,WEGE3:45,EMBR3:72,RAIL3:15,AZUL4:3,MOTV3:12,SUZB3:52,KLBN11:20,JBSS3:38,MBRF3:20,SLCE3:18,CYRE3:23,MRVE3:7,EZTC3:15,TOTS3:39,VIVT3:31,TIMS3:20};
+const UNIVERSE={ITUB4:"Bancos",BBDC4:"Bancos",BBAS3:"Bancos",SANB11:"Bancos",BPAC11:"Bancos",B3SA3:"Financeiro",BBSE3:"Seguros",CXSE3:"Seguros",PETR4:"Petróleo",PETR3:"Petróleo",PRIO3:"Petróleo",RECV3:"Petróleo",UGPA3:"Petróleo",VBBR3:"Petróleo",CSAN3:"Petróleo",VALE3:"Mineração",CMIN3:"Mineração",GGBR4:"Siderurgia",CSNA3:"Siderurgia",USIM5:"Siderurgia",GOAU4:"Siderurgia",AXIA3:"Energia",EQTL3:"Energia",CPFE3:"Energia",CMIG4:"Energia",EGIE3:"Energia",TAEE11:"Energia",ENGI11:"Energia",SBSP3:"Saneamento",ABEV3:"Consumo",NATU3:"Consumo",MGLU3:"Varejo",LREN3:"Varejo",ASAI3:"Varejo",RADL3:"Saúde",HAPV3:"Saúde",RDOR3:"Saúde",WEGE3:"Indústria",EMBJ3:"Indústria",RAIL3:"Logística",MOTV3:"Logística",SUZB3:"Papel e Celulose",KLBN11:"Papel e Celulose",JBSS32:"Alimentos",MBRF3:"Alimentos",SLCE3:"Agro",CYRE3:"Construção",MRVE3:"Construção",EZTC3:"Construção",TOTS3:"Tecnologia",VIVT3:"Telecom",TIMS3:"Telecom"};
+const BASE={ITUB4:36,BBDC4:15,BBAS3:24,SANB11:27,BPAC11:38,B3SA3:12,BBSE3:36,CXSE3:14,PETR4:32,PETR3:35,PRIO3:42,RECV3:15,UGPA3:17,VBBR3:22,CSAN3:8,VALE3:55,CMIN3:5,GGBR4:17,CSNA3:8,USIM5:6,GOAU4:9,AXIA3:44,EQTL3:33,CPFE3:39,CMIG4:11,EGIE3:40,TAEE11:35,ENGI11:44,SBSP3:110,ABEV3:13,NATU3:9,MGLU3:9,LREN3:16,ASAI3:7,RADL3:24,HAPV3:40,RDOR3:35,WEGE3:45,EMBJ3:72,RAIL3:15,MOTV3:12,SUZB3:52,KLBN11:20,JBSS32:38,MBRF3:20,SLCE3:18,CYRE3:23,MRVE3:7,EZTC3:15,TOTS3:39,VIVT3:31,TIMS3:20};
 
 /* ===== Gerador de pregão simulado (5 min, 10:00–17:00) ===== */
 function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
@@ -232,7 +232,7 @@ function analyze(raw){
   }
   return rows.sort((a,b)=>b.score-a.score);
 }
-if(typeof module!=="undefined") module.exports={analyze};
+if(typeof module!=="undefined") module.exports={analyze,UNIVERSE};
 if(typeof document==="undefined") throw 0; // carregado pelo teste de paridade: só o motor
 </script>
 <script>

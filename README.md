@@ -33,6 +33,8 @@ python -m radar_b3.build_page data/snapshot.json -o dist/radar.html  # página a
 - **Pivôs**: máxima/mínima/fechamento do pregão anterior, pelo candle diário.
 - Ativos sem negócio no pregão mais recente (suspensos, deslistados, código trocado)
   saem da varredura e aparecem em `errors` (chip "N sem dados" no painel).
+- Limitação do Yahoo: os candles dos leilões de abertura e fechamento vêm com volume 0,
+  então o volume dos leilões fica fora da VWAP e do delta (o preço de fechamento entra).
 
 ## Testes
 
