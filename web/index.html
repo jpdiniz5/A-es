@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radar de Fluxo B3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: terminal de varredura — destaque do ativo selecionado no topo, setores numa faixa, colunas compradora/vendedora e mapa por setor embaixo */
+:root{
+  --bg:#E4EEF5; --surface:#C8DCEA; --panel:#A8CCE0; --card:#F2F7FB; --line:#C0D8E8;
+  --accent:#90BCD4; --accent-strong:#6AAEC8; --ink:#1a2a3a; --muted:#4f6476; --faint:#7d93a6;
+  --up:#17834f; --up-soft:#d3ecdf; --down:#c13b35; --down-soft:#f6dcda; --warn:#a8741a;
+  --f-display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1b26; --surface:#162736; --panel:#1f3a50; --card:#14222f; --line:#264256;
+  --accent:#3f7fa0; --accent-strong:#6AAEC8; --ink:#dce9f3; --muted:#9db3c5; --faint:#6f889c;
+  --up:#3fbf80; --up-soft:#173a2b; --down:#ec6a62; --down-soft:#3d1f1e; --warn:#e0a94a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1b26; --surface:#162736; --panel:#1f3a50; --card:#14222f; --line:#264256;
+  --accent:#3f7fa0; --accent-strong:#6AAEC8; --ink:#dce9f3; --muted:#9db3c5; --faint:#6f889c;
+  --up:#3fbf80; --up-soft:#173a2b; --down:#ec6a62; --down-soft:#3d1f1e; --warn:#e0a94a; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:14px 40px;display:grid;gap:14px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* topo */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:24px;letter-spacing:.02em;margin:0}
+.brand h1 b{color:var(--accent-strong)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;border:1px solid var(--line);background:var(--card);color:var(--muted)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.chip.live .dot{background:var(--up)}
+.chip.err{color:var(--warn);cursor:help}
+.breadth{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12px;flex-wrap:wrap}
+.bbar{width:150px;height:8px;border-radius:4px;background:var(--down);overflow:hidden}
+.bbar i{display:block;height:100%;background:var(--up)}
+button{font:inherit;cursor:pointer}
+.btn{font-family:var(--f-mono);font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--accent-strong);background:var(--card);color:var(--ink)}
+.btn:hover{background:var(--surface)}
+:focus-visible{outline:2px solid var(--accent-strong);outline-offset:2px}
+
+/* setores */
+.sectors{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:8px;flex-wrap:wrap}
+.label{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 18px}
+.sec{display:grid;grid-template-columns:96px 1fr 56px;align-items:center;gap:8px;font-size:12px;padding:2px 0;background:none;border:0;color:inherit;text-align:left;border-radius:4px}
+.sec:hover{background:var(--card)}
+.sec.active{background:var(--card);box-shadow:inset 0 0 0 1px var(--accent-strong)}
+.sec .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track{position:relative;height:6px;background:var(--card);border-radius:3px}
+.track i{position:absolute;top:0;height:100%;border-radius:3px}
+.track:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint)}
+.sec .v{text-align:right;font-family:var(--f-mono);font-size:11.5px}
+
+/* destaque */
+.hero{background:var(--card);border:1px solid var(--line);border-radius:12px;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);overflow:hidden}
+.hero-l{padding:16px;display:grid;gap:12px;align-content:start;border-right:1px solid var(--line)}
+.hero-r{padding:12px 12px 8px;min-width:0}
+.tk{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:13px;color:#fff;flex:none}
+.tk h2{font-family:var(--f-display);font-size:26px;margin:0;line-height:1}
+.tk small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.badges{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.08em;padding:5px 12px;border-radius:5px;color:#fff;text-transform:uppercase}
+.pill.bull{background:var(--up)} .pill.bear{background:var(--down)}
+.cls{font-family:var(--f-mono);font-size:11px;padding:3px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
+.cls.bull{background:var(--up-soft);color:var(--up)} .cls.bear{background:var(--down-soft);color:var(--down)}
+.ring{--p:50;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--c,var(--up)) calc(var(--p)*1%),var(--line) 0);flex:none}
+.ring span{width:34px;height:34px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-family:var(--f-mono);font-weight:700;font-size:13px}
+.big{font-family:var(--f-display);font-weight:700;font-size:46px;line-height:1;letter-spacing:-.01em}
+.price{font-family:var(--f-mono);font-size:14px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.kv div{display:grid;gap:1px;min-width:0}
+.kv b{font-family:var(--f-mono);font-weight:500;font-size:13.5px;font-variant-numeric:tabular-nums}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:var(--f-mono);font-size:10px;fill:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--f-mono);font-size:10.5px;color:var(--muted);padding:2px 4px 0}
+.legend i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:5px}
+
+/* colunas */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.col{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}
+.col-h{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line)}
+.col-h h3{font-family:var(--f-display);font-size:15px;margin:0;letter-spacing:.03em}
+.col.buy .col-h{background:var(--up-soft)} .col.sell .col-h{background:var(--down-soft)}
+.row{width:100%;display:grid;grid-template-columns:22px minmax(0,1.1fr) 84px minmax(0,1fr) 38px;align-items:center;gap:10px;padding:8px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;text-align:left}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--bg)}
+.row.sel{background:var(--surface)}
+.rk{font-family:var(--f-mono);font-size:11px;color:var(--faint)}
+.rn b{font-family:var(--f-display);font-size:15px;display:block;line-height:1.1}
+.rn small{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.rc{font-family:var(--f-mono);font-size:13px;font-weight:700;text-align:right}
+.rc small{display:block;font-weight:400;font-size:10.5px;color:var(--muted)}
+.spark{width:100%;height:28px;display:block}
+.sc{font-family:var(--f-mono);font-size:12px;font-weight:700;text-align:center;border-radius:4px;padding:2px 0}
+
+/* mapa */
+.map{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:10px}
+.map-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 16px}
+.grp{display:grid;gap:4px;align-content:start}
+.grp .label{display:flex;justify-content:space-between}
+.tiles{display:flex;flex-wrap:wrap;gap:4px}
+.tile{font-family:var(--f-mono);font-size:11px;padding:4px 6px;border-radius:4px;border:1px solid transparent;color:var(--ink);line-height:1.15;text-align:left}
+.tile b{font-weight:700;display:block}
+.tile:hover{border-color:var(--accent-strong)}
+.note{font-size:12px;color:var(--muted);max-width:90ch}
+.note b{color:var(--ink)}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr}
+  .hero-l{border-right:0;border-bottom:1px solid var(--line)}
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:420px){
+  .big{font-size:38px}
+  .row{grid-template-columns:18px minmax(0,1fr) 72px 34px}
+  .row .spark{display:none}
+  .bbar{width:96px}
+}
+@media (prefers-reduced-motion:no-preference){.row,.tile,.sec{transition:background .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>RADAR <b>B3</b></h1>
+      <span class="chip" id="statusChip"><span class="dot"></span><span id="statusTxt">Demo · dados simulados</span></span>
+      <span class="chip err" id="errs" hidden></span>
+    </div>
+    <div class="breadth">
+      <span class="up" id="nUp">0 ↑</span>
+      <span class="bbar"><i id="bUp"></i></span>
+      <span class="down" id="nDn">0 ↓</span>
+      <span class="label" id="clock"></span>
+      <button class="btn" id="reseed" type="button">Nova simulação</button>
+    </div>
+  </header>
+
+  <section class="sectors" aria-label="Setores">
+    <div class="sec-head"><span class="label">Setores · variação média</span><span class="label" id="secHint">toque para filtrar</span></div>
+    <div class="sec-grid" id="sectors"></div>
+  </section>
+
+  <section class="hero" id="hero" aria-label="Ativo em destaque"></section>
+
+  <section class="cols">
+    <div class="col buy"><div class="col-h"><h3 class="up">FLUXO COMPRADOR</h3><span class="label" id="cBuy"></span></div><div id="buyList"></div></div>
+    <div class="col sell"><div class="col-h"><h3 class="down">FLUXO VENDEDOR</h3><span class="label" id="cSell"></span></div><div id="sellList"></div></div>
+  </section>
+
+  <section class="map" aria-label="Mapa por setor">
+    <div class="sec-head"><span class="label">Mapa do universo · por setor</span><span class="label">cor = variação · borda = score</span></div>
+    <div class="map-g" id="map"></div>
+    <p class="note"><b>Como ler.</b> Delta é estimado pela posição do fechamento de cada candle de 5 min dentro da máxima/mínima, ponderado pelo volume. Volume relativo compara o volume acumulado do pregão com a média dos 4 pregões anteriores até o mesmo horário. S1/S2/R1/R2 são pivôs clássicos do pregão anterior; a zona é a faixa de maior volume do dia. Score combina variação relativa ao universo, delta alinhado, volume relativo e posição vs VWAP. É um filtro de varredura, não recomendação de compra ou venda.</p>
+  </section>
+</div>
+
+<!-- preenchido por `python -m radar_b3.build_page`; vazio = modo demo / servidor -->
+<script id="snapshot" type="application/json"></script>
+<script>
+/* ===== Universo (mesmo do tickers.py) ===== */
+const UNIVERSE={ITUB4:"Bancos",BBDC4:"Bancos",BBAS3:"Bancos",SANB11:"Bancos",BPAC11:"Bancos",B3SA3:"Financeiro",BBSE3:"Seguros",CXSE3:"Seguros",PETR4:"Petróleo",PETR3:"Petróleo",PRIO3:"Petróleo",RECV3:"Petróleo",UGPA3:"Petróleo",VBBR3:"Petróleo",CSAN3:"Petróleo",VALE3:"Mineração",CMIN3:"Mineração",GGBR4:"Siderurgia",CSNA3:"Siderurgia",USIM5:"Siderurgia",GOAU4:"Siderurgia",AXIA3:"Energia",EQTL3:"Energia",CPFE3:"Energia",CMIG4:"Energia",EGIE3:"Energia",TAEE11:"Energia",ENGI11:"Energia",SBSP3:"Saneamento",ABEV3:"Consumo",NATU3:"Consumo",MGLU3:"Varejo",LREN3:"Varejo",ASAI3:"Varejo",RADL3:"Saúde",HAPV3:"Saúde",RDOR3:"Saúde",WEGE3:"Indústria",EMBJ3:"Indústria",RAIL3:"Logística",MOTV3:"Logística",SUZB3:"Papel e Celulose",KLBN11:"Papel e Celulose",JBSS32:"Alimentos",MBRF3:"Alimentos",SLCE3:"Agro",CYRE3:"Construção",MRVE3:"Construção",EZTC3:"Construção",TOTS3:"Tecnologia",VIVT3:"Telecom",TIMS3:"Telecom"};
+const BASE={ITUB4:36,BBDC4:15,BBAS3:24,SANB11:27,BPAC11:38,B3SA3:12,BBSE3:36,CXSE3:14,PETR4:32,PETR3:35,PRIO3:42,RECV3:15,UGPA3:17,VBBR3:22,CSAN3:8,VALE3:55,CMIN3:5,GGBR4:17,CSNA3:8,USIM5:6,GOAU4:9,AXIA3:44,EQTL3:33,CPFE3:39,CMIG4:11,EGIE3:40,TAEE11:35,ENGI11:44,SBSP3:110,ABEV3:13,NATU3:9,MGLU3:9,LREN3:16,ASAI3:7,RADL3:24,HAPV3:40,RDOR3:35,WEGE3:45,EMBJ3:72,RAIL3:15,MOTV3:12,SUZB3:52,KLBN11:20,JBSS32:38,MBRF3:20,SLCE3:18,CYRE3:23,MRVE3:7,EZTC3:15,TOTS3:39,VIVT3:31,TIMS3:20};
+
+/* ===== Gerador de pregão simulado (5 min, 10:00–17:00) ===== */
+function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+function gauss(r){return Math.sqrt(-2*Math.log(r()+1e-9))*Math.cos(2*Math.PI*r())}
+function simulate(seed){
+  const r=rng(seed), out=[], N=84;
+  const mkt=(r()-.4)*1.6; // humor do mercado em %
+  const secBias={}; for(const s of new Set(Object.values(UNIVERSE))) secBias[s]=(r()-.5)*2.2;
+  for(const [t,sec] of Object.entries(UNIVERSE)){
+    const pc=BASE[t]*(0.95+r()*.1);
+    const target=(mkt+secBias[sec]+gauss(r)*1.7)/100;
+    const vol=0.0018+r()*0.002, front=0.35+r()*0.5;
+    const ph=pc*(1+r()*.02), pl=pc*(1-r()*.02);
+    let p=pc*(1+gauss(r)*0.004); const bars=[];
+    const baseV=2e5+r()*3e6;
+    for(let i=0;i<N;i++){
+      const w=Math.exp(-i/(N*front*.35)); // movimento concentrado na abertura
+      const drift=target/N*(1+2.2*w)/1.6;
+      const o=p; const c=o*(1+drift+gauss(r)*vol);
+      const h=Math.max(o,c)*(1+Math.abs(gauss(r))*vol*.6), l=Math.min(o,c)*(1-Math.abs(gauss(r))*vol*.6);
+      const u=1.6-Math.sin(Math.PI*i/(N-1)); // volume em "U"
+      bars.push({o,h,l,c,v:Math.round(baseV/N*u*(0.5+r())*(1+Math.abs(target)*25))}); p=c;
+    }
+    out.push({ticker:t,sector:sec,prevClose:pc,prevHigh:Math.max(ph,pc),prevLow:Math.min(pl,pc),bars,relVolRaw:0.6+r()*2.2+Math.abs(target)*30});
+  }
+  return out;
+}
+
+/* ===== Motor (mesma lógica do engine.py — ver tests/test_parity.py) ===== */
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function analyze(raw){
+  const rows=raw.filter(d=>d.bars&&d.bars.length).map(d=>{
+    const b=d.bars, last=b[b.length-1].c;
+    let pv=0,vv=0,dl=0; for(const k of b){const tp=(k.h+k.l+k.c)/3;pv+=tp*k.v;vv+=k.v;const rg=k.h-k.l;if(rg>0)dl+=k.v*((k.c-k.l)-(k.h-k.c))/rg}
+    const vwap=vv?pv/vv:last, dr=vv?dl/vv:0, chg=last/d.prevClose-1;
+    const P=(d.prevHigh+d.prevLow+d.prevClose)/3, R1=2*P-d.prevLow, S1=2*P-d.prevHigh, R2=P+(d.prevHigh-d.prevLow), S2=P-(d.prevHigh-d.prevLow), R3=d.prevHigh+2*(P-d.prevLow), S3=d.prevLow-2*(d.prevHigh-P);
+    // zona = faixa de maior volume do dia (POC em 24 faixas)
+    const lo=Math.min(...b.map(k=>k.l)), hi=Math.max(...b.map(k=>k.h)), nb=24, st=(hi-lo)/nb||1, hist=new Array(nb).fill(0);
+    for(const k of b){const i=clamp(Math.floor(((k.h+k.l+k.c)/3-lo)/st),0,nb-1);hist[i]+=k.v}
+    const pi=hist.indexOf(Math.max(...hist)); const zone=[lo+pi*st,lo+(pi+1)*st];
+    const bull=chg>=0;
+    let cls; if(bull) cls=dr>0.08?"Acumulação compradora":"Alta sem fluxo"; else cls=dr<-0.08?"Distribuição vendedora":"Realização";
+    const levels=[S3,S2,S1,P,R1,R2,R3,vwap].sort((a,c)=>a-c);
+    const above=levels.filter(x=>x>last*1.0005), below=levels.filter(x=>x<last*.9995);
+    // preço além de todos os níveis: projeta o alvo em 1:1 a partir do stop
+    const stop=bull?(below.at(-1)??S3):(above[0]??R3);
+    const tgt=bull?(above[0]??last+Math.abs(last-stop)):(below.at(-1)??last-Math.abs(stop-last));
+    const rr=Math.abs(tgt-last)/Math.max(Math.abs(last-stop),1e-6);
+    return {...d,last,chg,vwap,dr,delta:dl,vol:vv,relVol:d.relVol??d.relVolRaw??1,P,R1,R2,R3,S1,S2,S3,zone,bull,cls,rr,tgt,stop};
+  });
+  const abs=rows.map(x=>Math.abs(x.chg)).sort((a,b)=>a-b), den=Math.max(abs.length-1,1);
+  for(const x of rows){
+    const pr=abs.findIndex(v=>v>=Math.abs(x.chg))/den;
+    const sgn=x.bull?1:-1;
+    const dAl=clamp(x.dr*sgn/0.4,0,1), rv=clamp((x.relVol-0.8)/2.2,0,1), vw=(x.last-x.vwap)*sgn>0?1:0;
+    x.score=Math.round(100*(0.35*pr+0.30*dAl+0.20*rv+0.15*vw));
+  }
+  return rows.sort((a,b)=>b.score-a.score);
+}
+if(typeof module!=="undefined") module.exports={analyze,UNIVERSE};
+if(typeof document==="undefined") throw 0; // carregado pelo teste de paridade: só o motor
+</script>
+<script>
+/* ===== Formatação ===== */
+const nf=new Intl.NumberFormat("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const R=x=>"R$ "+nf.format(x), N2=x=>nf.format(x);
+const pct=x=>(x>=0?"+":"")+nf.format(x*100)+"%";
+const big=x=>{const a=Math.abs(x),s=x<0?"−":"+";return s+(a>=1e6?nf.format(a/1e6)+"M":a>=1e3?nf.format(a/1e3)+"K":nf.format(a))};
+const hue=t=>{let h=0;for(const c of t)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 45% 42%)`};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function spark(x,w=120,h=28){
+  const c=x.bars.map(k=>k.c), lo=Math.min(...c,x.prevClose), hi=Math.max(...c,x.prevClose), sy=v=>h-2-(v-lo)/(hi-lo||1)*(h-4);
+  const pts=c.map((v,i)=>`${(i/Math.max(c.length-1,1)*w).toFixed(1)},${sy(v).toFixed(1)}`).join(" ");
+  const col=x.bull?"var(--up)":"var(--down)";
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="${w}" y1="${sy(x.prevClose)}" y2="${sy(x.prevClose)}" stroke="var(--faint)" stroke-dasharray="2 3" stroke-width="1"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function chart(x){
+  const W=760,H=300,L=8,Rg=86,T=12,B=24, b=x.bars, n=Math.max(b.length-1,1);
+  const vals=[...b.map(k=>k.h),...b.map(k=>k.l),x.S1,x.R1,x.vwap];
+  let lo=Math.min(...vals), hi=Math.max(...vals); const pad=(hi-lo)*.06; lo-=pad; hi+=pad;
+  // eixo de tempo fixo no pregão 10:00–17:00 (84 candles), para o gráfico intradiário não esticar
+  const span=Math.max(84,b.length)-1;
+  const sx=i=>L+i/span*(W-L-Rg), sy=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+  const col=x.bull?"var(--up)":"var(--down)";
+  let g="";
+  for(let i=0;i<5;i++){const v=lo+(hi-lo)*i/4;g+=`<line x1="${L}" x2="${W-Rg}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" stroke-width="1"/>`}
+  for(const hh of [11,12,13,14,15,16]){const i=(hh-10)*12;g+=`<text x="${sx(i)}" y="${H-6}" text-anchor="middle">${hh}:00</text>`}
+  // zona
+  g+=`<rect x="${L}" width="${W-L-Rg}" y="${sy(x.zone[1])}" height="${Math.max(2,sy(x.zone[0])-sy(x.zone[1]))}" fill="var(--accent)" opacity=".35"/>`;
+  // níveis
+  const lv=[["R2",x.R2,"var(--down)"],["R1",x.R1,"var(--down)"],["S1",x.S1,"var(--up)"],["S2",x.S2,"var(--up)"]].filter(([,v])=>v>lo&&v<hi);
+  const used=[];
+  for(const [nm,v,c] of lv){let y=sy(v);if(used.some(u=>Math.abs(u-y)<12))continue;used.push(y);g+=`<line x1="${L}" x2="${W-Rg}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1" stroke-dasharray="5 4" opacity=".7"/><text x="${W-Rg+6}" y="${y+3.5}">${nm} ${N2(v)}</text>`}
+  // candles
+  const cw=Math.max(2,(W-L-Rg)/(span+1)*.62);
+  b.forEach((k,i)=>{const up=k.c>=k.o, c=up?"var(--up)":"var(--down)";g+=`<line x1="${sx(i)}" x2="${sx(i)}" y1="${sy(k.h)}" y2="${sy(k.l)}" stroke="${c}" stroke-width="1"/><rect x="${sx(i)-cw/2}" width="${cw}" y="${sy(Math.max(k.o,k.c))}" height="${Math.max(1,Math.abs(sy(k.o)-sy(k.c)))}" fill="${c}"/>`});
+  // vwap acumulado
+  let pv=0,vv=0; const vp=b.map((k,i)=>{pv+=(k.h+k.l+k.c)/3*k.v;vv+=k.v;return `${sx(i).toFixed(1)},${sy(vv?pv/vv:k.c).toFixed(1)}`}).join(" ");
+  g+=`<polyline points="${vp}" fill="none" stroke="var(--accent-strong)" stroke-width="1.6"/>`;
+  // último
+  const ly=sy(x.last);
+  g+=`<circle cx="${sx(b.length-1)}" cy="${ly}" r="4" fill="${col}"/><rect x="${W-Rg+2}" y="${ly-9}" width="${Rg-4}" height="18" rx="3" fill="${col}"/><text x="${W-Rg+6}" y="${ly+3.5}" style="fill:#fff;font-weight:700">${N2(x.last)}</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico intradiário de ${x.ticker}">${g}</svg>
+  <div class="legend"><span><i style="border-color:var(--accent-strong)"></i>VWAP ${N2(x.vwap)}</span><span><i style="border-color:var(--accent);border-top-width:8px;opacity:.6"></i>Zona ${N2(x.zone[0])}–${N2(x.zone[1])}</span><span><i style="border-color:var(--down);border-top-style:dashed"></i>Resistências</span><span><i style="border-color:var(--up);border-top-style:dashed"></i>Suportes</span></div>`;
+}
+
+function ring(s,bull){return `<div class="ring" style="--p:${s};--c:${bull?"var(--up)":"var(--down)"}"><span>${s}</span></div>`}
+
+/* ===== Render ===== */
+let DATA=[], SEL=null, FILTER=null, LIVE=false;
+
+function render(){
+  if(!DATA.length) return;
+  const rows=FILTER?DATA.filter(x=>x.sector===FILTER):DATA;
+  const up=DATA.filter(x=>x.bull).length, dn=DATA.length-up;
+  nUp.textContent=up+" ↑"; nDn.textContent=dn+" ↓"; bUp.style.width=(up/DATA.length*100)+"%";
+
+  // setores
+  const secs={}; for(const x of DATA){(secs[x.sector]??=[]).push(x.chg)}
+  const sl=Object.entries(secs).map(([s,a])=>[s,a.reduce((p,c)=>p+c,0)/a.length]).sort((a,b)=>b[1]-a[1]);
+  const mx=Math.max(...sl.map(s=>Math.abs(s[1])),.005);
+  sectors.innerHTML=sl.map(([s,v])=>{const w=Math.abs(v)/mx*50;return `<button class="sec${FILTER===s?" active":""}" data-sec="${esc(s)}" type="button"><span class="nm">${esc(s)}</span><span class="track"><i style="${v>=0?`left:50%;width:${w}%;background:var(--up)`:`left:${50-w}%;width:${w}%;background:var(--down)`}"></i></span><span class="v ${v>=0?"up":"down"}">${pct(v)}</span></button>`}).join("");
+  secHint.textContent=FILTER?"filtro: "+FILTER+" · toque de novo para limpar":"toque para filtrar";
+
+  // listas
+  const buy=rows.filter(x=>x.bull).slice(0,8), sell=rows.filter(x=>!x.bull).slice(0,8);
+  if(!SEL||!rows.includes(SEL)) SEL=rows[0];
+  const li=(x,i)=>`<button class="row${x===SEL?" sel":""}" data-t="${esc(x.ticker)}" type="button"><span class="rk">${String(i+1).padStart(2,"0")}</span><span class="rn"><b>${esc(x.ticker)}</b><small>${x.cls}</small></span><span class="rc ${x.bull?"up":"down"}">${pct(x.chg)}<small>${N2(x.last)}</small></span>${spark(x)}<span class="sc" style="background:${x.bull?"var(--up-soft)":"var(--down-soft)"};color:${x.bull?"var(--up)":"var(--down)"}">${x.score}</span></button>`;
+  buyList.innerHTML=buy.map(li).join("")||`<p class="note" style="padding:12px">Nenhum ativo em alta neste filtro.</p>`;
+  sellList.innerHTML=sell.map(li).join("")||`<p class="note" style="padding:12px">Nenhum ativo em queda neste filtro.</p>`;
+  cBuy.textContent=rows.filter(x=>x.bull).length+" ativos"; cSell.textContent=rows.filter(x=>!x.bull).length+" ativos";
+
+  // destaque
+  const x=SEL, rank=DATA.indexOf(x)+1, side=x.bull?"bull":"bear";
+  hero.innerHTML=`<div class="hero-l">
+      <div class="tk"><div class="logo" style="background:${hue(x.ticker)}">${esc(x.ticker.slice(0,2))}</div><div><h2>${esc(x.ticker)}</h2><small>${esc(x.sector)} · #${rank} de ${DATA.length}</small></div></div>
+      <div class="badges"><span class="pill ${side}">${x.bull?"Comprador":"Vendedor"}</span>${ring(x.score,x.bull)}<span class="cls ${side}">${x.cls}</span></div>
+      <div><div class="big ${x.bull?"up":"down"}">${pct(x.chg)}</div><div class="price">${R(x.last)} · fech. ant. ${N2(x.prevClose)}</div></div>
+      <div class="kv">
+        <div><span class="label">VWAP</span><b>${N2(x.vwap)} <span class="${x.last>=x.vwap?"up":"down"}">${x.last>=x.vwap?"▲ acima":"▼ abaixo"}</span></b></div>
+        <div><span class="label">Delta est.</span><b class="${x.delta>=0?"up":"down"}">${big(x.delta)} · ${x.dr>=0?"+":""}${(x.dr*100).toFixed(0)}%</b></div>
+        <div><span class="label">Volume rel.</span><b>${nf.format(x.relVol)}×</b></div>
+        <div><span class="label">Zona (POC)</span><b>${N2(x.zone[0])}–${N2(x.zone[1])}</b></div>
+        <div><span class="label">S1 / S2</span><b class="up">${N2(x.S1)} / ${N2(x.S2)}</b></div>
+        <div><span class="label">R1 / R2</span><b class="down">${N2(x.R1)} / ${N2(x.R2)}</b></div>
+        <div><span class="label">Alvo / Stop</span><b>${N2(x.tgt)} / ${N2(x.stop)}</b></div>
+        <div><span class="label">Risco:Retorno</span><b>1 : ${nf.format(x.rr)}</b></div>
+      </div></div>
+    <div class="hero-r">${chart(x)}</div>`;
+
+  // mapa
+  const groups={}; for(const r of DATA)(groups[r.sector]??=[]).push(r);
+  map.innerHTML=sl.map(([s,v])=>`<div class="grp"><span class="label"><span>${esc(s)}</span><span class="${v>=0?"up":"down"}">${pct(v)}</span></span><div class="tiles">${groups[s].sort((a,b)=>b.chg-a.chg).map(r=>{const a=clamp(Math.abs(r.chg)/0.04,0.12,1);const bg=r.bull?`color-mix(in srgb, var(--up) ${Math.round(a*70)}%, var(--card))`:`color-mix(in srgb, var(--down) ${Math.round(a*70)}%, var(--card))`;return `<button class="tile" data-t="${esc(r.ticker)}" type="button" style="background:${bg};${r.score>=80?"border-color:var(--ink)":""};${a>.55?"color:#fff":""}"><b>${esc(r.ticker)}</b>${pct(r.chg)}</button>`}).join("")}</div></div>`).join("");
+}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-t]"); if(t){SEL=DATA.find(x=>x.ticker===t.dataset.t);render();if(t.classList.contains("tile"))hero.scrollIntoView({behavior:"smooth",block:"start"});return}
+  const s=e.target.closest("[data-sec]"); if(s){FILTER=FILTER===s.dataset.sec?null:s.dataset.sec;SEL=null;render()}
+});
+
+function showErrors(errors){
+  const k=Object.keys(errors||{});
+  errs.hidden=!k.length;
+  if(k.length){errs.textContent=k.length+" sem dados";errs.title=k.map(t=>t+": "+errors[t]).join("\n")}
+}
+function loadSnapshot(j,label){
+  const keep=SEL?.ticker;
+  DATA=analyze(j.items); SEL=DATA.find(x=>x.ticker===keep)||null;
+  statusTxt.textContent=label; clock.textContent="pregão "+j.updated; showErrors(j.errors);
+  render();
+}
+function loadDemo(seed){DATA=analyze(simulate(seed));SEL=null;clock.textContent="pregão simulado · 17:00";showErrors(null);render()}
+
+/* ===== Modo real: quando servido pelo server.py, lê /api/scan ===== */
+async function refreshLive(){
+  try{
+    const r=await fetch("api/scan",{cache:"no-store"}); if(!r.ok)throw 0;
+    const j=await r.json(); if(!j.items?.length)throw 0;
+    LIVE=true; statusChip.classList.add("live"); reseed.textContent="Atualizar";
+    loadSnapshot(j,j.source+" · atraso ~15 min");
+    return true;
+  }catch{return false}
+}
+let SNAP=null;
+try{const t=document.getElementById("snapshot").textContent.trim(); if(t) SNAP=JSON.parse(t)}catch{}
+reseed.onclick=()=>{if(LIVE)refreshLive();else loadDemo(Math.floor(Math.random()*1e9))};
+if(SNAP?.items?.length){loadSnapshot(SNAP,SNAP.source+" · fotografia do pregão");statusChip.classList.add("live");reseed.hidden=true}
+else loadDemo(20261013);
+refreshLive().then(ok=>{if(ok){reseed.hidden=false;setInterval(refreshLive,60000)}});
+</script>
+</body>
+</html>

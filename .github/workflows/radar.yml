@@ -1,0 +1,54 @@
+name: radar
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    # a cada 30 min no pregão (10:00–17:30 BRT = 13:00–20:30 UTC), seg–sex
+    - cron: "5,35 13-20 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m pytest -q
+
+  scan:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: Varredura com dados reais
+        run: python -m radar_b3.scan --out data/snapshot.json --top 8 --min-items 40
+      - run: python -m radar_b3.build_page data/snapshot.json -o dist/radar.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar
+          path: |
+            data/snapshot.json
+            dist/radar.html
+      - name: Publica o snapshot no branch "snapshot"
+        run: |
+          mkdir -p /tmp/pub && cp data/snapshot.json dist/radar.html /tmp/pub/
+          cd /tmp/pub
+          git init -q -b snapshot
+          git config user.name "radar-bot"
+          git config user.email "radar-bot@users.noreply.github.com"
+          git add . && git commit -qm "snapshot $(date -u +%FT%TZ) (${GITHUB_SHA::7})"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" snapshot
