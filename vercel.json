@@ -1,0 +1,7 @@
+{
+  "regions": ["gru1"],
+  "functions": {
+    "api/scan.py": { "maxDuration": 60, "includeFiles": "radar_b3/**" }
+  },
+  "rewrites": [{ "source": "/", "destination": "/web/index.html" }]
+}
